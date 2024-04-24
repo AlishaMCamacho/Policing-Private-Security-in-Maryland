@@ -1,0 +1,56 @@
+---
+title: "Law Enforcement by Year 1985 - 2022"
+output: html_document
+date: "2024-04-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Load Libraries
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(janitor)
+```
+
+**LOAD DATA**
+
+Data Source: FBI Crime Data Explorer
+Data Link: https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/le/pe
+
+File: Law Enforcement Employees Breakout.csv
+Date Accessed: April 24, 2024
+
+```{r}
+police <- read.csv("raw_data/Law_Enforcement_Breakout_1985-2022.csv") %>% 
+
+#remove "X" from column names
+  
+  rename_all(~ gsub("^X", "", .)) %>%
+
+#calculate total number of officers each year
+
+summarise_if(is.numeric, sum)
+police
+
+```
+
+
+#export files
+
+```{r}
+
+#Police by year
+
+write.csv(police, file = "police_by_year.csv")
+
+```
+
+#Upload to Data Wrapper to create graph
+https://www.datawrapper.de/_/qvbYW/?v=2
+
