@@ -1,0 +1,252 @@
+---
+title: "Police Employee Numbers By County"
+output: html_document
+date: "2024-04-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Description
+
+Using the data made available from the FBI Crime Data Explorer at the county level, I am looking at the police employment percentage changes between 2019 and 2021 by county. Data for 2022 and 2023 was not made available at this time. I exported the data to upload to Datawrapper to produce a map that shows the percentage change by county. 
+
+Next, I looked at the congregated data for the entire state of Maryland to determine state-wide police employment trends. 
+
+I found a nearly 12% decline in law enforcement between 2019 and 2021, and nearly an 11% decline between 2020 and 2021. 
+
+I also compared private security employment numbers and police numbers and found that there is about a 1:1 ratio in Maryland from 2019-2021. 
+
+
+## Load Libraries
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(janitor)
+```
+
+**LOAD DATA**
+
+Data Source: FBI Crime Data Explorer
+Data Link: https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/downloads
+
+Navigation: Additional Datasets --> Law Enforcement Employees Data
+File: pe_1960_2022.csv
+Description: Information about Law Enforcement Employees Data
+Date Accessed: April 24, 2024
+
+The file *pe_1960_2022.csv* can also be accessed with this link 
+https://drive.google.com/file/d/1ABIZemLpN7mH25g0cz-GabVKQI8_8xIF/view?usp=sharing
+
+The .csv was too large to export into GitHub directly. 
+
+```{r}
+police <- read.csv("Data/pe_1960_2022.csv")
+
+glimpse(police)
+
+```
+
+
+```{r}
+
+#select MD data only
+
+police_md <- police %>% 
+  filter(state_abbr == "MD") %>% 
+  select(data_year, pub_agency_name, county_name, total_pe_ct, pe_ct_per_1000) %>% 
+  arrange(desc(data_year))
+  
+glimpse(police_md)
+
+police_md
+
+
+```
+
+
+#police employee percentage change by county between 2019 and 2021
+
+```{r}
+difference_2019_2021 <- police_md %>% 
+  filter(data_year %in% c(2019, 2021)) %>% 
+  group_by(county_name) %>% 
+  summarise(police_count_2019 = sum(total_pe_ct[data_year == 2019]),
+            police_count_2021 = sum(total_pe_ct[data_year == 2021])) %>% 
+  mutate(percentage_change = (police_count_2021 - police_count_2019) / police_count_2019 * 100) %>% 
+  select(county_name, percentage_change) %>% 
+  filter(!(county_name %in% c('UNMAPPED COUNTY', 'NOT SPECIFIED'))) %>% 
+  arrange(percentage_change) 
+
+difference_2019_2021
+
+```
+
+
+#export files & use to create map on datawrapper
+
+datawrapper graphic/map: https://app.datawrapper.de/map/Atsix/visualize#refine
+
+
+```{r}
+
+#Police difference 2019 - 2021 by county
+
+write.csv(difference_2019_2021, file = "police_county_2019_2021.csv")
+
+```
+
+
+####
+
+
+**STATE-WIDE ANALYSIS**
+
+```{r}
+
+police_md2 <- police %>% 
+  filter(state_abbr == "MD") %>% 
+  select(data_year, pub_agency_name, county_name, total_pe_ct, pe_ct_per_1000) %>% 
+  arrange(desc(data_year))
+ # group_by(data_year)
+  
+glimpse(police_md)
+
+police_md2
+
+```
+
+#filter for 2019 and 2021
+
+```{r}
+
+state_difference_2019_2021 <- police_md2 %>% 
+  filter(data_year %in% c(2019, 2021)) %>% 
+  group_by(data_year) %>% 
+  summarise(state_police_count = sum(total_pe_ct))
+  
+  
+  
+  #mutate(percentage_change = (police_count_2021 - police_count_2019) / police_count_2019 * 100)
+
+state_difference_2019_2021
+
+```
+```{r}
+
+state_difference_total_2019_2021 <- state_difference_2019_2021 %>% 
+  mutate(percentage_change = (state_police_count - lag(state_police_count)) / lag(state_police_count) * 100)
+
+print(state_difference_total_2019_2021)
+
+#nearly a 12% decrease between 2019 and 2021
+
+```
+
+
+###
+
+
+#filter for 2020 and 2021
+
+```{r}
+
+state_difference_2020_2021 <- police_md2 %>% 
+  filter(data_year %in% c(2020, 2021)) %>% 
+  group_by(data_year) %>% 
+  summarise(state_police_count = sum(total_pe_ct))
+  
+
+state_difference_2020_2021
+
+```
+
+
+```{r}
+
+state_difference_total_2020_2021 <- state_difference_2020_2021 %>% 
+  mutate(percentage_change = (state_police_count - lag(state_police_count)) / lag(state_police_count) * 100)
+
+print(state_difference_total_2020_2021)
+
+#nearly a 11% decrease between 2020 and 2021
+
+```
+
+
+###
+
+***COMPARE POLICE AND PRIVATE SECURITY SECTOR NUMBERS***
+
+Create dataframe using information from the Quarterly Census of Employment and Wages (QCEW) program
+
+Private Security Source Data and Analysis can be found here: 
+
+https://docs.google.com/spreadsheets/d/1VX-mldNd6fQSRbTc_A1tHJg2o7OEf-zPQBMKFgsF7rQ/edit?usp=sharing
+
+#create data frame for private security sector for NAICS code 561612 "Security guards and patrol services" 
+
+
+```{r}
+
+private_security_561612 <- data.frame(
+  data_year = c("2019", "2020", "2021", "2022"),
+  ps_561612 = c(16920, 15624, 16107, 16165)
+)
+
+private_security_561612
+
+```
+
+
+#create data frame for private security sector for NAICS code 5616 "Investigation and security services" 
+
+```{r}
+private_security_5616 <- data.frame(
+  data_year = c("2019", "2020", "2021", "2022"),
+  ps_5616 = c(22504, 20517, 20973, 21559)
+)
+
+private_security_5616
+
+```
+
+
+
+
+```{r}
+
+police_ps <- police_md %>% 
+  filter(data_year %in% c(2019,2020, 2021, 2022)) %>% 
+  group_by(data_year) %>% 
+  summarise(police_employment = sum(total_pe_ct, na.rm = TRUE)) %>% 
+  mutate(data_year = as.character(data_year))
+
+police_ps
+
+```
+
+#Join the data frames
+
+```{r}
+join_police_ps <- police_ps %>% 
+  left_join(private_security_561612, by = "data_year") %>% 
+  left_join(private_security_5616, by = "data_year") 
+  
+join_police_ps
+```
+
+#calculate ratios
+
+```{r}
+join_police_ps_ratio <- join_police_ps %>% 
+  mutate(ratio_561612 = (ps_561612/police_employment)) %>% 
+  mutate (ratio_5616 = (ps_5616/police_employment))
+  
+join_police_ps_ratio
+
+```
+
