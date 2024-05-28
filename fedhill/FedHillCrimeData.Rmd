@@ -1,0 +1,149 @@
+---
+title: "FedHillCrimeData"
+output: html_document
+date: "2024-05-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# loading packages 
+library(tidyverse)
+library(tidycensus)
+library(lubridate)
+library(janitor)
+library(sf)
+library(mapview)
+library(kableExtra)
+```
+
+#most recent part 1 crimes data
+#filter for Federal Hill 01-01-23 to 05-27-23 & 01-01-24 to 05-27-24
+
+# download here: https://data.baltimorecity.gov/datasets/e0992dddbbf64231976d5d57763ec4f5_0/explore?filters=eyJDcmltZURhdGVUaW1lIjpbMTY4NTI0NjQwMDAwMCwxNzE2NzgyNzAwMDAwXSwiTmVpZ2hib3Job29kIjpbIkZFREVSQUwgSElMTCJdfQ%3D%3D&location=7.888847%2C-38.355650%2C2.00&showTable=true
+
+**PERCENT CHANGE ALL CRIME **
+
+```{r}
+
+filtered_fedhillcrime <- read.csv("Part1_Crime_Beta_FedHill2.csv") %>%
+  select(CrimeDateTime, Total_Incidents, CrimeCode) %>%
+  mutate(CrimeDateTime = mdy_hms(CrimeDateTime), 
+         DateOnly = as.Date(CrimeDateTime),
+         YearOnly = year(CrimeDateTime)) %>% 
+  select(DateOnly, YearOnly, CrimeCode) %>% 
+
+
+print(filtered_fedhillcrime)
+
+```
+
+
+```{r}
+#filter for 01.01.23 - 05.27.23 and 01.01.24 - 05.27.24
+
+filtered_date_fedhillcrime <- filtered_fedhillcrime %>% 
+  filter((DateOnly >= as.Date("2023-01-01") & DateOnly <= as.Date("2023-05-27")) |
+         (DateOnly >= as.Date("2024-01-01") & DateOnly <= as.Date("2024-05-27")))
+
+print(filtered_date_fedhillcrime)
+
+```
+
+
+```{r}
+#summarize incidents by year
+ 
+annual_incidents <- filtered_date_fedhillcrime %>% 
+  group_by(YearOnly) %>% 
+  summarize(Incident_Count = n())
+
+annual_incidents
+
+```
+
+```{r}
+#percentchange
+
+annual_incidents <- annual_incidents %>%
+  mutate(Incident_Count_Previous = lag(Incident_Count),
+         Percent_Change = ((Incident_Count - Incident_Count_Previous) / Incident_Count_Previous) * 100)
+
+
+annual_incidents
+
+#total crime decreased by 17.5% from this time (05.27.24) last year (05.27.23)
+
+```
+**total crime decreased by 17.5% from this time (05.27.24) last year (05.27.23)**
+
+###
+
+
+**PERCENT CHANGE VIOLENT CRIME & PROPERTY CRIME**
+
+#join filtered_fedhillcrime and crime code data sets
+
+```{r}
+#load data made available:https://data.baltimorecity.gov/documents/e6ca4eadecdc475a961f68bc314e2a86/about
+
+#select violent and property crime codes
+
+crimecodes <- read.csv("CRIME_CODES.csv") %>% 
+  select(CODE, VIO_PROP_CFS)
+
+crimecodes
+
+```
+
+
+#prepare to join crime codes with filtered_date_fedhillcrime
+
+```{r}
+filtered_date_fedhillcrime <- filtered_date_fedhillcrime %>% 
+  rename(CODE = CrimeCode)
+
+filtered_date_fedhillcrime
+```
+
+#join
+
+```{r}
+joined_data <- left_join(filtered_date_fedhillcrime, crimecodes, by = "CODE")
+
+joined_data
+
+```
+
+```{r}
+#summarize violent & property crimes by year
+ 
+crime_type <- joined_data %>% 
+  group_by(YearOnly, VIO_PROP_CFS) %>% 
+  summarize(Incidents = n())
+
+crime_type
+
+```
+
+#fix table
+
+```{r}
+crime_type <- crime_type %>% 
+    pivot_wider(names_from = VIO_PROP_CFS, values_from = Incidents)  
+
+crime_type
+```
+
+```{r}
+percent_change_property <- ((crime_type$PROPERTY[2] - crime_type$PROPERTY[1]) / crime_type$PROPERTY[1]) * 100
+
+percent_change_violent <- ((crime_type$VIOLENT[2] - crime_type$VIOLENT[1]) / crime_type$VIOLENT[1]) * 100
+
+percent_change_property #-11.32%
+percent_change_violent #-22.38%
+
+```
+
