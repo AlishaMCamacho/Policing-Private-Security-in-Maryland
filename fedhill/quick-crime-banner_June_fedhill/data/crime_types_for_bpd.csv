@@ -1,0 +1,14 @@
+crime_type,description
+other,common assault
+property,arson
+property,auto theft
+property,burglary
+property,larceny
+property,larceny from auto
+violent,agg. assault
+violent,homicide
+violent,rape
+violent,robbery
+violent,robbery - carjacking
+violent,robbery - commercial
+violent,shooting
