@@ -1,5 +1,5 @@
 ---
-title: "Law Enforcement by Year 1985 - 2022"
+title: "Law Enforcement by Year 1985 - 2023"
 output: html_document
 date: "2024-04-09"
 ---
@@ -25,10 +25,12 @@ Data Link: https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/le/pe
 
 File: Law Enforcement Employees Breakout.csv
 Date Accessed: April 24, 2024
+Updated: June 30, 2024
 
 ```{r}
-police <- read.csv("raw_data/Law_Enforcement_Breakout_1985-2022.csv") %>% 
-
+police_1985_2022 <- read.csv("Data/Law_Enforcement_Breakout_1985-2022.csv") %>% 
+  #noting that this is the data set no longer appearing on the CDE
+  
 #remove "X" from column names
   
   rename_all(~ gsub("^X", "", .)) %>%
@@ -36,20 +38,97 @@ police <- read.csv("raw_data/Law_Enforcement_Breakout_1985-2022.csv") %>%
 #calculate total number of officers each year
 
 summarise_if(is.numeric, sum)
-police
+
+police_1985_2022
 
 ```
 
+#get 2023 numbers
 
-#export files
+```{r}
+police_2013_2023 <- read.csv("Data/Law_Enforcement_Employees_Breakout_06-30-2024_MD.csv") %>% 
+
+#remove "X" from column names
+rename_all(~ gsub("^X", "", .)) %>%  
+
+summarise_if(is.numeric, sum)
+
+police_2013_2023
+
+```
+`
+
+#join 2023 with 1985 to 2022 data
+
+police_2013_2023
+police_1985_2022
 
 ```{r}
 
-#Police by year
+police_1985_2022_long <- police_1985_2022 %>% 
+  pivot_longer(everything(), names_to = "year", values_to = "law_enforcement")
 
-write.csv(police, file = "police_by_year.csv")
+police_1985_2022_long
 
 ```
+
+```{r}
+police_2013_2023_long <- police_2013_2023 %>% 
+  pivot_longer(everything(), names_to = "year", values_to = "law_enforcement")
+police_2013_2023_long
+
+```
+
+```{r}
+police_1985_2023 <- full_join(police_1985_2022_long, police_2013_2023_long, 
+                           by = c("year"), suffix = c("", "_new"))
+police_1985_2023
+
+```
+
+
+
+```{r}
+police_1985_2023 <- police_1985_2023 %>% 
+  mutate(law_enforcement = coalesce(law_enforcement, law_enforcement_new)) %>% 
+  select(year, law_enforcement)
+
+police_1985_2023
+
+```
+
+```{r}
+police_1985_2023_wider <- police_1985_2023 %>% 
+  pivot_wider (names_from = "year", values_from = "law_enforcement")
+
+police_1985_2023_wider
+```
+
+#percent change
+
+```{r}
+
+
+  percent_change <- police_1985_2023_wider %>%
+  
+  mutate(pc_2019_2023 = ((`2023` - `2019`) / `2019`) * 100) %>% 
+  mutate(pc_2022_2023 = ((`2023` - `2022`) / `2022`) * 100)
+  
+percent_change
+
+```
+
+
+#export for data viz 
+
+```{r}
+
+write.csv(police_1985_2023_wider, file = "police_by_year_1985-2023.csv")
+
+```
+
+
+
 
 #Upload to Data Wrapper to create graph
 https://www.datawrapper.de/_/qvbYW/?v=2
