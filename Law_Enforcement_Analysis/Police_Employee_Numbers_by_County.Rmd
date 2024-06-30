@@ -9,9 +9,13 @@ by: Alisha Camacho
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+Updated: June 30, 2024
+
+
 ## Description
 
-Using the data made available from the FBI Crime Data Explorer at the county level, I am looking at the police employment percentage changes between 2019 and 2021 by county. Data for 2022 and 2023 was not made available at this time. I exported the data to upload to Datawrapper to produce a map that shows the percentage change by county. 
+Using the data made available from the FBI Crime Data Explorer at the county level, I am looking at the police employment percentage changes between 2019 and 2023 by county. I exported the data to upload to Datawrapper to produce a map that shows the percentage change by county. 
 
 Next, I looked at the congregated data for the entire state of Maryland to determine state-wide police employment trends. 
 
@@ -26,6 +30,7 @@ library(tidyverse)
 library(dplyr)
 library(lubridate)
 library(janitor)
+library(scales)
 ```
 
 **LOAD DATA**
@@ -38,14 +43,14 @@ File: pe_1960_2022.csv
 Description: Information about Law Enforcement Employees Data
 Date Accessed: April 24, 2024
 
-The file *pe_1960_2022.csv* can also be accessed with this link 
-https://drive.google.com/file/d/1ABIZemLpN7mH25g0cz-GabVKQI8_8xIF/view?usp=sharing
+The file *lee_1960_2023.csv* can also be accessed with this link 
+https://drive.google.com/file/d/17nmeS-AN62WvHqRFCFpIHmP-wCks1ZVu/view?usp=sharing
 
 The .csv was too large to export into GitHub directly. 
 
 
 ```{r}
-police <- read.csv("Data/pe_1960_2022.csv")
+police <- read.csv("Data/lee_1960_2023.csv")
 
 
 glimpse(police)
@@ -66,57 +71,58 @@ glimpse(police_md)
 
 police_md
 
-
 ```
 
 
 **Police Employee Percentage Change by County Between 2019 and 2021**
 
 ```{r}
-difference_2019_2021 <- police_md %>% 
-  filter(data_year %in% c(2019, 2021)) %>% 
+difference_2019_2023 <- police_md %>% 
+  filter(data_year %in% c(2019, 2023)) %>% 
   group_by(county_name) %>% 
    summarise(police_count_2019 = sum(total_pe_ct[data_year == 2019]),
-            police_count_2021 = sum(total_pe_ct[data_year == 2021])) %>% 
-   mutate(percentage_change = (police_count_2021 - police_count_2019) / police_count_2019 * 100) %>% 
+            police_count_2023 = sum(total_pe_ct[data_year == 2023])) %>% 
+   mutate(percentage_change = (police_count_2023 - police_count_2019) / police_count_2019 * 100) %>% 
   arrange(percentage_change) 
 
 
-difference_2019_2021
+difference_2019_2023
 ```
 
 #County Map Percentage Change 2019-2021
 
 ```{r}
 
-difference_2019_2021 <- police_md %>% 
-  filter(data_year %in% c(2019, 2021)) %>% 
+difference_2019_2023 <- police_md %>% 
+  filter(data_year %in% c(2019, 2023)) %>% 
   group_by(county_name) %>% 
   summarise(police_count_2019 = sum(total_pe_ct[data_year == 2019]),
-            police_count_2021 = sum(total_pe_ct[data_year == 2021])) %>% 
-  mutate(percentage_change = (police_count_2021 - police_count_2019) / police_count_2019 * 100) %>% 
+            police_count_2023 = sum(total_pe_ct[data_year == 2023])) %>% 
+  mutate(percentage_change = (police_count_2023 - police_count_2019) / police_count_2019 * 100) %>% 
   select(county_name, percentage_change) %>% 
   filter(!(county_name %in% c('UNMAPPED COUNTY', 'NOT SPECIFIED', "CARROLL, FREDERICK"))) %>% 
   arrange(percentage_change) 
 
-difference_2019_2021
+difference_2019_2023
 
 ```
+
 
 ```{r}
 #clean county names
 
-difference_2019_2021_Clean <- difference_2019_2021 %>% 
+difference_2019_2023_Clean <- difference_2019_2023 %>% 
   mutate(county_name = case_when(
     county_name == "ST MARY'S" ~ "ST. MARY'S",
     county_name == "BALTIMORE" ~ "BALTIMORE COUNTY",
     TRUE ~ county_name
-  ), 
-    percentage_change = round(percentage_change, 0)
+  ),  
   
-  )
+  percentage_change = round(percentage_change, 1) 
+) %>% 
+  arrange(percentage_change)
   
-difference_2019_2021_Clean
+difference_2019_2023_Clean
 
 ```
 
@@ -129,9 +135,9 @@ datawrapper graphic/map: https://app.datawrapper.de/map/Atsix/visualize#refine
 
 ```{r}
 
-#Police difference 2019 - 2021 by county
+#Police difference 2019 - 2023 by county
 
-write.csv(difference_2019_2021_Clean, file = "police_county_2019_2021_export_clean.csv")
+write.csv(difference_2019_2023_Clean, file = "police_county_2019_2023_export_clean.csv")
 
 ```
 
@@ -162,13 +168,13 @@ police_md2
 
 ```{r}
 
-state_difference_2019_2021 <- police_md2 %>% 
-  filter(data_year %in% c(2019, 2021)) %>% 
+state_difference_2019_2023 <- police_md2 %>% 
+  filter(data_year %in% c(2019, 2023)) %>% 
   group_by(data_year) %>% 
   summarise(state_police_count = sum(total_pe_ct))
   
 
-state_difference_2019_2021
+state_difference_2019_2023
 
 ```
 
@@ -176,12 +182,12 @@ state_difference_2019_2021
 
 ```{r}
 
-state_difference_total_2019_2021 <- state_difference_2019_2021 %>% 
+state_difference_total_2019_2023 <- state_difference_2019_2023 %>% 
   mutate(percentage_change = (state_police_count - lag(state_police_count)) / lag(state_police_count) * 100)
 
-print(state_difference_total_2019_2021)
+print(state_difference_total_2019_2023)
 
-#nearly a 12% decrease between 2019 and 2021
+#nearly a 9.5% decrease between 2019 and 2023
 
 ```
 
@@ -189,17 +195,17 @@ print(state_difference_total_2019_2021)
 ###
 
 
-#filter for 2020 and 2021
+#filter for 2022 and 2023
 
 ```{r}
 
-state_difference_2020_2021 <- police_md2 %>% 
-  filter(data_year %in% c(2020, 2021)) %>% 
+state_difference_2022_2023 <- police_md2 %>% 
+  filter(data_year %in% c(2022, 2023)) %>% 
   group_by(data_year) %>% 
   summarise(state_police_count = sum(total_pe_ct))
   
 
-state_difference_2020_2021
+state_difference_2022_2023
 
 ```
 
@@ -208,11 +214,11 @@ state_difference_2020_2021
 
 ```{r}
 
-state_difference_total_2020_2021 <- state_difference_2020_2021 %>% 
-  mutate(percentage_change = (state_police_count - lag(state_police_count)) / lag(state_police_count) * 100)
+state_difference_total_2022_2023 <- state_difference_2022_2023 %>% 
+  mutate(percentage_change = (state_police_count - lag(state_police_count)) / lag(state_police_count) * 100) 
 
-print(state_difference_total_2020_2021)
+print(state_difference_total_2022_2023)
 
-#nearly a 11% decrease between 2020 and 2021
+#nearly a 2% increase between 2022 and 2023
 
 ```
